@@ -1,0 +1,27 @@
+**/__pycache__
+**/logs/*
+**/.ipynb_checkpoints
+**/.DS_STORE
+commit_message.md
+**/nccl_debug
+.idea
+venv
+*.swp
+build/
+data/
+figs/
+.vscode
+cgo_gen/
+*.html
+*.so
+
+# python
+*.egg-info/
+dist/
+*.egg
+**/*.whl
+MANIFEST
+**/*.pt
+
+
+credentials/**

@@ -1,0 +1,10 @@
+{
+    "train_micro_batch_size_per_gpu": 32,
+    "optimizer": {
+        "type": "Adam",
+        "params": {
+            "lr": 0.001
+        }
+    },
+    "steps_per_print": 100
+}
