@@ -1,11 +1,12 @@
 import argparse
 import os
+import importlib
+from datetime import datetime
+from typing import Union, Callable
+
 import gymnasium as gym
 import deepspeed
 import numpy as np
-import time
-from datetime import datetime
-from typing import Union, Callable
 import torch
 import torch.nn as nn
 import torch.distributed as dist
@@ -15,9 +16,11 @@ from deepspeed.runtime.pipe.topology import (
     PipelineParallelGrid,
 )
 from torch.utils.tensorboard import SummaryWriter
+import gymnasium as gym
 
 import gear
 from gear.mpu import ModelParallelismUnit
+import models
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -48,6 +51,12 @@ parser.add_argument(
     "--tensorboard-logdir", type=str, default="./logs", help="Tensorboard logging path"
 )
 parser.add_argument(
+    "--model",
+    choices=["mlp", "mat"],
+    default="mlp",
+    help="Experiment name, used as logging file name",
+)
+parser.add_argument(
     "--expr-name",
     type=str,
     default=datetime.now().strftime("%d-%m-%Y-%H:%M:%S"),
@@ -62,6 +71,7 @@ eval_step: Callable = None
 
 def rank_0_evaluation(
     model,
+    eval_env,
     num_eval_trajectories,
     step_id,
     tensorboard_writer: Union[SummaryWriter, None],
@@ -69,7 +79,9 @@ def rank_0_evaluation(
     if dist.get_rank() != 0:
         dist.barrier()
     else:
-        eval_ret = eval_step(model, num_eval_trajectories, step_id, tensorboard_writer)
+        eval_ret = eval_step(
+            model, eval_env, num_eval_trajectories, step_id, tensorboard_writer
+        )
         dist.barrier()
         return eval_ret
 
@@ -122,13 +134,10 @@ def setup(args):
     in_dim = np.prod(
         table_spec.column_specs[table_spec.index("observations")].shape
     ).item()
-    from models import mlp
-
-    # print(f"Model configuration: input_dim {in_dim}")
-    raw_model = mlp.model(in_dim=in_dim, hidden_dim=128, out_dim=3)
-    train_step = mlp.train_step
-    eval_step = mlp.eval_step
-
+    model_module = importlib.import_module("models." + args.model, models)
+    raw_model = model_module.Model(in_dim=in_dim, hidden_dim=128, out_dim=3)
+    train_step = model_module.train_step
+    eval_step = model_module.eval_step
     model, optimizer, _, _ = deepspeed.initialize(
         args=args, model=raw_model, model_parameters=raw_model.parameters()
     )
@@ -147,12 +156,18 @@ def run(
 ):
     model.train()
     # optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-
+    eval_env = eval_env = gym.make("Hopper-v4") if dist.get_rank() == 0 else None
     for step_id in range(num_iter):
         train_step(loader, model, optimizer, step_id, tensorboard_writer)
 
-        if step_id % 10 == 0:
-            rank_0_evaluation(model, 100, step_id, tensorboard_writer)
+        if step_id % 100 == 0:
+            rank_0_evaluation(
+                model=model,
+                eval_env=eval_env,
+                num_eval_trajectories=100,
+                step_id=step_id,
+                tensorboard_writer=tensorboard_writer,
+            )
 
 
 if __name__ == "__main__":

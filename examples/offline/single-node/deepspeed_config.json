@@ -3,7 +3,7 @@
     "optimizer": {
         "type": "Adam",
         "params": {
-            "lr": 0.001
+            "lr": 0.0005
         }
     },
     "steps_per_print": 100

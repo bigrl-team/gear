@@ -1,4 +1,4 @@
-from .model_impl import MLP as model
+from .model_impl import MLP as Model
 from .funcs import train_step
 from .funcs import eval_step
 

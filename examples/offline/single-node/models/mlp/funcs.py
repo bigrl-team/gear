@@ -5,8 +5,6 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.distributions import Normal
 import torch.distributed as dist
 
-import gymnasium as gym
-
 
 def generate_padding_mask(max_length):
     return torch.cat(
@@ -18,7 +16,6 @@ def generate_padding_mask(max_length):
 
 
 mask = generate_padding_mask(max_length=1000).cuda()
-eval_env = gym.make("Hopper-v4") if dist.get_rank() == 0 else None
 
 
 def train_step(
@@ -52,7 +49,11 @@ def train_step(
 
 
 def eval_step(
-    model, num_evals, step_id: int, tensorboard_writer: Union[SummaryWriter, None]
+    model,
+    eval_env,
+    num_evals,
+    step_id: int,
+    tensorboard_writer: Union[SummaryWriter, None],
 ):
     model.eval()
     rsums = []
