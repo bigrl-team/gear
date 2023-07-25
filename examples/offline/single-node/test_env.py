@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 import torch
 import torch.nn as nn
 from torch.distributions import Normal
@@ -17,7 +17,6 @@ class MLP(nn.Module):
             nn.Linear(out_dim, 3),
             nn.Tanh(),
         )
-        
 
         self.sigma_net = nn.Sequential(
             nn.Linear(in_dim, hidden_dim),
@@ -44,7 +43,7 @@ def eval(num_eval_trajectories: int):
     model.eval()
     rsums = []
     for i in range(num_eval_trajectories):
-        obs = env.reset()
+        obs, info = env.reset()
         rsum = 0
         for i in range(10000):
             obs = obs.reshape(1, *obs.shape)
@@ -53,10 +52,12 @@ def eval(num_eval_trajectories: int):
             distri = Normal(mean, sigma)
             act = distri.rsample()
             print(act.shape)
-            obs, reward, done, info = env.step(act.detach().numpy().squeeze(0))
+            obs, reward, terminated, truncated, info = env.step(
+                act.detach().numpy().squeeze(0)
+            )
             print(reward)
             rsum += reward
-            if done:
+            if terminated or truncated:
                 print(f"total steps {i}, reward {rsum}")
                 rsums.append(rsum)
                 break
