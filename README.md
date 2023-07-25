@@ -162,6 +162,21 @@ $ python -c "import gear; gear.check_visible_device()"
 CHECK visible_device_count.......................................4.
 ```
 
+## Quick Start with Docker
+Users may find it difficult to get hands on GEAR since there exists a bunch of dependencies. Hence we provide a dockerfile which can be utilized to quickly setup a docker container with GEAR-ready environment. Before starting, make sure that ``nvidia-ctk``, namely [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html), is properly installed on your local system.
+```shell
+$ cd gear
+$ docker build -t gear:v0.3 .
+$ docker run -itd --gpus all gear:v0.3 /bin/bash 
+$ docker exec -it <container-id> /bin/bash
+```
+
+Then in the container ``bash`` shell:
+```shell
+$ cd gear; eval "$(~/miniconda/bin/conda shell.bash hook)"; conda activate gear; pip install -e .; python -c "import gear; gear.check_visible_device()"
+```
+
+
 ## Acknowledgement
 
 ### Third-party libraries:
