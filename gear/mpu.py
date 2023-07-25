@@ -9,12 +9,6 @@ import torch.distributed as dist
 
 # DeepSpeed reference: https://github.com/microsoft/DeepSpeed/blob/3f5e4931098bf533f8217afb6d986c90f81aed80/deepspeed/runtime/pipe/topology.py
 
-DEFAULT_WORLD_SIZE = 1
-DEFAULT_LOCAL_WORLD_SIZE = torch.cuda.device_count()
-try:
-    DEFAULT_WORLD_SIZE = dist.get_world_size()
-except RuntimeError as e:
-    logging.info("Parallism detect failed, world size set to 1")
 
 axes = ["pipe", "data"]
 ProcessCoord = namedtuple("ProcessCoord", axes)
@@ -59,26 +53,45 @@ def get_world_size(coord: ProcessCoord) -> int:
 class ModelParallelismUnit:
     def __init__(
         self,
-        proc_coord: Union[ProcessCoord, dict, Sequence[int]] = ProcessCoord(
-            pipe=1, data=DEFAULT_WORLD_SIZE
-        ),
+        proc_coord: Union[ProcessCoord, dict, Sequence[int], None] = None,
         global_rank: Union[int, None] = None,
         local_rank: Union[int, None] = None,
         device: Union[torch.device, None] = None,
     ) -> None:
-        if isinstance(proc_coord, Sequence):
+        DEFAULT_WORLD_SIZE = 1
+        DEFAULT_LOCAL_WORLD_SIZE = torch.cuda.device_count()
+        try:
+            DEFAULT_WORLD_SIZE = dist.get_world_size()
+        except RuntimeError as e:
+            logging.info("Parallism detect failed, world size set to 1")
+
+        DEFAULT_GLOBAL_RANK = 0
+        try:
+            DEFAULT_GLOBAL_RANK = dist.get_rank()
+        except RuntimeError as e:
+            logging.info("Parallism detect failed, global rank set to 0")
+
+        if proc_coord is None:
+            proc_coord = ProcessCoord(pipe=1, data=DEFAULT_WORLD_SIZE)
+        elif isinstance(proc_coord, Sequence):
             proc_coord = ProcessCoord(*proc_coord)
         elif isinstance(proc_coord, dict):
             proc_coord = ProcessCoord(**proc_coord)
 
         self.coord = proc_coord
-        self.global_rank = global_rank if global_rank else dist.get_rank()
-        self.local_rank = local_rank if local_rank else os.environ["LOCAL_RANK"]
+        self.global_rank = global_rank if global_rank else DEFAULT_GLOBAL_RANK
+
+        self.local_rank = (
+            local_rank
+            if local_rank
+            else (int(os.environ["LOCAL_RANK"]) if os.environ["LOCAL_RANK"] else 0)
+        )
+        print(self.global_rank, self.local_rank)
         self.local_world = DEFAULT_LOCAL_WORLD_SIZE
         self.local_proc_ranks = list(
             range(
-                self.global_rank - local_rank,
-                self.global_rank - local_rank + self.local_world,
+                self.global_rank - self.local_rank,
+                self.global_rank - self.local_rank + self.local_world,
             )
         )
         self.local_proc_identifiers = [False] * get_world_size(proc_coord)

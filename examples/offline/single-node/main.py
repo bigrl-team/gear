@@ -5,7 +5,7 @@ import deepspeed
 import numpy as np
 import time
 from datetime import datetime
-from typing import Union
+from typing import Union, Callable
 import torch
 import torch.nn as nn
 import torch.distributed as dist
@@ -18,8 +18,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 import gear
 from gear.mpu import ModelParallelismUnit
-
-from models import MLP
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -58,31 +56,22 @@ parser.add_argument(
 parser = deepspeed.add_config_arguments(parser)
 
 
-def rank_0_evaluation(env, model, num_eval_trajectories):
+train_step: Callable = None
+eval_step: Callable = None
+
+
+def rank_0_evaluation(
+    model,
+    num_eval_trajectories,
+    step_id,
+    tensorboard_writer: Union[SummaryWriter, None],
+):
     if dist.get_rank() != 0:
         dist.barrier()
     else:
-        model.eval()
-        rsums = []
-        for _ in range(num_eval_trajectories):
-            obs, info = env.reset()
-            rsum = 0
-            while True:
-                # print(obs)
-                mean, sigma = model(torch.from_numpy(obs).cuda().float())
-                distri = Normal(mean, sigma)
-
-                act = distri.rsample()
-                obs, reward, terminated, truncated, info = env.step(
-                    act.detach().cpu().numpy()
-                )
-                rsum += reward
-                if terminated or truncated:
-                    rsums.append(rsum)
-                    break
-        model.train()
+        eval_ret = eval_step(model, num_eval_trajectories, step_id, tensorboard_writer)
         dist.barrier()
-        return np.mean(rsums)
+        return eval_ret
 
 
 def rank_0_get_tensorboard_writer(args) -> Union[SummaryWriter, None]:
@@ -95,6 +84,9 @@ def rank_0_get_tensorboard_writer(args) -> Union[SummaryWriter, None]:
 
 
 def setup(args):
+    global train_step
+    global eval_step
+
     deepspeed.init_distributed(dist_init_required=True)
     gear.init()
 
@@ -130,8 +122,13 @@ def setup(args):
     in_dim = np.prod(
         table_spec.column_specs[table_spec.index("observations")].shape
     ).item()
+    from models import mlp
+
     # print(f"Model configuration: input_dim {in_dim}")
-    raw_model = MLP(in_dim=in_dim, hidden_dim=128, out_dim=3)
+    raw_model = mlp.model(in_dim=in_dim, hidden_dim=128, out_dim=3)
+    train_step = mlp.train_step
+    eval_step = mlp.eval_step
+
     model, optimizer, _, _ = deepspeed.initialize(
         args=args, model=raw_model, model_parameters=raw_model.parameters()
     )
@@ -139,15 +136,6 @@ def setup(args):
     tensorboard_writer = rank_0_get_tensorboard_writer(args)
 
     return loader, model, optimizer, tensorboard_writer
-
-
-def generate_padding_mask(max_length):
-    return torch.cat(
-        [
-            torch.zeros(1, max_length, dtype=torch.int32),
-            torch.tril(torch.ones(max_length, max_length, dtype=torch.int32)),
-        ]
-    )
 
 
 def run(
@@ -160,40 +148,11 @@ def run(
     model.train()
     # optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    mask = generate_padding_mask(max_length=1000).cuda()
-    env = gym.make("Hopper-v4") if dist.get_rank() == 0 else None
-    for i in range(num_iter):
-        model.zero_grad()
+    for step_id in range(num_iter):
+        train_step(loader, model, optimizer, step_id, tensorboard_writer)
 
-        timesteps, data_batch = next(loader)
-        obs = data_batch[0]
-        act = data_batch[1]
-        # print(obs.shape, data_batch)
-        mean, sigma = model(obs)
-        distri = Normal(mean, sigma)
-        loss = -distri.log_prob(act)
-        loss = torch.sum(loss.mean(-1) * mask[timesteps]) / timesteps.sum()
-        # print(loss, timesteps)
-
-        # print(loss.detach().cpu().numpy())
-        model.backward(loss)
-        model.step()
-
-        if tensorboard_writer:
-            tensorboard_writer.add_scalar(
-                tag="training-losses", scalar_value=loss.item(), global_step=i
-            )
-
-        if i % 10 == 0:
-            eval_reward = rank_0_evaluation(env, model, 100)
-            if eval_reward:
-                print(f"Iteration: {i} evalution reward {eval_reward.item()}")
-                if tensorboard_writer:
-                    tensorboard_writer.add_scalar(
-                        tag="evaluation-rewards",
-                        scalar_value=eval_reward.item(),
-                        global_step=i,
-                    )
+        if step_id % 10 == 0:
+            rank_0_evaluation(model, 100, step_id, tensorboard_writer)
 
 
 if __name__ == "__main__":
