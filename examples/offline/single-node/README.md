@@ -23,9 +23,11 @@ The script is designed to download the ``Hopper-expert`` D4RL dataset and then t
 Please be aware that the SharedDataset is intended to function as an intermediary data structure for dataset construction or as a read-only shared storage. It's important to note that the SharedDataset is not thread-safe, additional efforts are required if you intend to modify the content of a SharedDataset concurrently. This can be done by using separate indexing regions or distributed barriers. 
 
 ### Step 2: Run Training Scripts
-Modify the training script ``run.sh`` by adding the argparse argument ``--data_path`` if you use a different path for the converted SharedDataset, otherwise it will be as simple as the following commands to run the example.
+Modify the training script ``run.sh`` by adding the argparse argument ``--data_path`` if you use a different path for the converted SharedDataset, otherwise it will be as simple as the following commands to run the example. We provide MLP and [Multi-Agent-Transformer(MAT)](https://github.com/PKU-MARL/Multi-Agent-Transformer) implementations in the example, which can be selected via command line arguments.
 ```
-$ bash run.sh
+$ bash run.sh --model mlp --data_path <path>
+(or)
+$ bash run.sh --model mat --data_path <path>
 ```
 
 The shell outputs and local tensorboard logs are expected:

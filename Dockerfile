@@ -1,5 +1,7 @@
 FROM nvcr.io/nvidia/cuda:11.7.0-cudnn8-devel-ubuntu20.04
 
+ARG ARG_TIMEZONE=UTC
+
 ENV ENV_TIMEZONE ${ARG_TIMEZONE}
 ENV TERM xterm-256color
 
@@ -32,4 +34,4 @@ RUN git clone git@github.com:bigrl-team/gear.git \
   && conda create -n gear python==3.10 -y \
   && conda activate gear \
   && pip install torch==1.13 --index-url https://download.pytorch.org/whl/cu117 \
-  && pip install -r requirements.txt ~
+  && pip install -r requirements.txt 
