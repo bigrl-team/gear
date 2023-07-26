@@ -96,8 +96,10 @@ class UniformSampler:
 
         self._cache = torch.zeros(batch_size, device=device, dtype=torch.long)
         if dp_rank == 0:
+            print("sdasdasdas")
             sampled_indices = self._dp_rank_zero_sync(indices, weights, batch_size)
         else:
+            print(f"dasdasdasdas{dp_rank}")
             sampled_indices = self._dp_rank_nonzero_sync(indices, weights, batch_size)
 
         return sampled_indices
@@ -116,11 +118,11 @@ class UniformSampler:
             # print(f"RANK0 recving {i}-th tensor ....")
             indices_collections[i] = _recv(src=i, group=dp_group, tag=i, device=device)
         # print([d.shape for d in indices_collections])
-        concat_indices = torch.cat(indices_collections, dim=0)
+        concat_indices = torch.cat(indices_collections, dim=-1)
 
         torch.randint(
             low=0,
-            high=concat_indices.size(0),
+            high=concat_indices.size(-1),
             size=self._cache.size(),
             generator=self._generator,
             dtype=torch.long,
@@ -128,7 +130,10 @@ class UniformSampler:
             out=self._cache,
         )
 
-        sampled_indices = torch.sort(concat_indices[self._cache]).values
+        sampled_indices = torch.index_select(
+            input=concat_indices, dim=-1, index=torch.sort(self._cache).values
+        )
+        print(f"sampled_indices shape is {sampled_indices.shape}")
 
         for i in range(1, dp_world):
             _send(sampled_indices, dst=i, group=dp_group, tag=i, device=device)
