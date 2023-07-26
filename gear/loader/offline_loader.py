@@ -124,7 +124,9 @@ class OfflineLoader(BasicLoader):
         batch_size = global_indices.size(0)
         slice_size = max(int(batch_size / self._dp_world), 1)
 
-        indices_partitions = [[None] * self._dp_world] * self._dp_world
+        indices_partitions = list(
+            [[None] * self._dp_world for _ in range(self._dp_world)]
+        )
         for i in range(self._dp_world):
             assigned_indices = global_indices[slice_size * i : slice_size * (i + 1)]
             for j in range(self._dp_world):
@@ -154,7 +156,7 @@ class OfflineLoader(BasicLoader):
         sampled_indices = self._sampler.sync_sample(
             self._indices,
             self._iset.weights,
-            self._batch_size,
+            self._batch_size * self._dp_world,
         )
         # print("============>>>>>>", sampled_indices)
         parts = self.partition_indices(sampled_indices)

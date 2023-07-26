@@ -28,7 +28,6 @@ def train_step(
     model.zero_grad()
 
     timesteps, data_batch = next(loader)
-    timesteps, data_batch = next(loader)
     obs = data_batch[0]
     act = data_batch[1]
     # print(obs.shape, data_batch)
@@ -57,22 +56,23 @@ def eval_step(
 ):
     model.eval()
     rsums = []
-    for _ in range(num_evals):
-        obs, info = eval_env.reset()
-        rsum = 0
-        while True:
-            # print(obs)
-            mean, sigma = model(torch.from_numpy(obs).cuda().float())
-            distri = Normal(mean, sigma)
+    with torch.no_grad():
+        for _ in range(num_evals):
+            obs, info = eval_env.reset()
+            rsum = 0
+            while True:
+                # print(obs)
+                mean, sigma = model(torch.from_numpy(obs).cuda().float())
+                distri = Normal(mean, sigma)
 
-            act = distri.rsample()
-            obs, reward, terminated, truncated, info = eval_env.step(
-                act.detach().cpu().numpy()
-            )
-            rsum += reward
-            if terminated or truncated:
-                rsums.append(rsum)
-                break
+                act = distri.sample()
+                obs, reward, terminated, truncated, info = eval_env.step(
+                    act.detach().cpu().numpy()
+                )
+                rsum += reward
+                if terminated or truncated:
+                    rsums.append(rsum)
+                    break
     ret = np.mean(rsums)
     print(f"Evaluation step {step_id}: {ret.item()}")
     if tensorboard_writer:
