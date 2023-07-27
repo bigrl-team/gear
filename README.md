@@ -9,7 +9,9 @@ Welcome to the official Github Repository for <font color=rgb(21,110,175)>GEAR</
 Recent works have shown large sequence models's impressive capability in RL challenges, such as multi-agent, multi-model and multi-task senarios. To make the training affordable, RL models are often trained with past experience and parallel framework. Given plenty exploration on the accelerating training with distributed GPU servers and multi-dimensional parallelism, the pivotal challenge that hinders the scaling of these large RL models relies in the experience replay systems. The systems are required to efficiently manage massive volume of experience data(~100TBs), select large trajectory batch(~K trajectories) and distribute data batch to the training servers according to various parallelism schemas. Traditional experience replay systems fail to fulfill the requirements, which inspires the design of GEAR.
 
 ![GEAR-Overview](figs/gear-overview.jpg "GEAR-Overview")
-<center><b>GEAR-Overview</b></center>
+<p align="center"><b>
+Fig. GERA overview
+</b></p>
 
 GEAR bridges online/offline RL data with parallely trained models. As illustrated in the overview, GEAR serve as a experience replay system enabling distributed trajectory storage and management, GPU accelerated trajectory selection and collection, featuring:
 * Efficient: GEAR proposes comprehensive optimizations towards data accessing & computation patterns of RL training workflows, including data locality in distributed training, CUDA kernels for trajectory selection, zero-copy host memory accessing from GPUs and etc.
@@ -19,7 +21,7 @@ GEAR bridges online/offline RL data with parallely trained models. As illustrate
 
 
 
-## Installation
+## Getting Started
 GEAR is designed as a framework-independent library and for usability we have implemented an Python interface for its integration with [PyTorch](https://github.com/pytorch/pytorch), the popular open-sourced Tensor library, and [DeepSpeed](https://github.com/microsoft/DeepSpeed), a widely-used distributed deep learning optimization library. Therefore, the following dependencies have to be met before installing GEAR.
 
 ```plain
@@ -27,7 +29,7 @@ torch==1.13.0+cu117
 deepspeed
 ```
 
-In this section, we will show how to make a clean installation for GEAR.
+In the following sections, we will show how to make a clean installation for GEAR.
 
 ### Prerequisite
 
@@ -212,8 +214,11 @@ As shown in end-to-end throughput comparison with Reverb, GEAR achieves 3x perfo
 ## Cite GEAR
 
 ```bibtex
-@article{wang2023gear,
+ @inproceedings{wang2023gear,
   title={GEAR: A GPU-Centric Experience Replay System for Large Reinforcement Learning Models},
-  author={Wang, Hanjing and Sit, Man-Kit and He, Congjie and Wen, Ying and Zhang, Weinan and Wang, Jun and Yang, Yaodong and Mai, Luo}
+  author={Wang, Hanjing and Sit, Man-Kit and He, Congjie and Wen, Ying and Zhang, Weinan and Wang, Jun and Yang, Yaodong and Mai, Luo},
+  booktitle={International conference on machine learning},
+  year={2023},
+  organization={PMLR}
 }
 ```
