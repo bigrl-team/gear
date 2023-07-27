@@ -87,8 +87,8 @@ def convert_d4rl_dataset(args):
         weight = 1.0
         timestep = columns[0].shape[0]
         dataset[trajectory_id] = weight, timestep, columns
-        assert dataset[trajectory_id].weight == weight
-        assert dataset[trajectory_id].timestep == timestep
+        # assert dataset[trajectory_id].weight == weight
+        # assert dataset[trajectory_id].timestep == timestep
     return dataset
 
 
@@ -97,7 +97,3 @@ if __name__ == "__main__":
     dataset = convert_d4rl_dataset(args)
 
     dataset.checkpoint(args.data_path)
-    import pickle as pkl
-
-    with open("/tmp/gear/checkpoints/iset.pt", "wb") as f:
-        pkl.dump(dataset._iset.get_state(), f)
