@@ -1,8 +1,8 @@
 import torch
 import libgear as glib
-import libgear.core as glibc
 
 from . import comm, dataset, dtypes, errors, loader, mpu, sampler, specs
+from .dtypes import DataType
 
 
 def init(device_id: int = None):
@@ -21,7 +21,7 @@ def init(device_id: int = None):
             device_id = int(os.environ["LOCAL_RANK"])
         except KeyError as ke:
             device_id = 0
-    glibc.init(device_id)
+    glib.cuda.init(device_id)
 
 
 __all__ = [
@@ -30,7 +30,9 @@ __all__ = [
     "loader",
     "dataset",
     "sampler",
+    # dtypes
     "dtypes",
+    "DataType",
     "errors",
     "mpu",
     "specs",
@@ -38,5 +40,4 @@ __all__ = [
 
 
 def check_visible_device():
-    glibc.print_environ()
-
+    glib.print_environ()

@@ -5,7 +5,8 @@ import pickle as pkl
 import random
 from typing import Any, Dict, List, Literal, Sequence, Union
 
-import libgear.core as glibc
+import libgear as glib
+import libgear.storage as glibs
 import torch
 from gear.dataset import SharedDataset
 from gear.dtypes import CVT_DTYPES_GEAR_TO_TORCH, CVT_DTYPES_TORCH_TO_GEAR
@@ -44,7 +45,7 @@ class OfflineLoader(BasicLoader):
         mpu: Mpu,
         sampling_method: Literal["Uniform", "Weighted", "Topk"] = "Uniform",
         patterns: Union[
-            None, Sequence[Union[glibc.SubscribePattern, Dict[str, Any], None]]
+            None, Sequence[Union[glibs.SubscribePattern, Dict[str, Any], None]]
         ] = None,
         key: Union[int, None] = None,
         attach: bool = True,
@@ -60,7 +61,7 @@ class OfflineLoader(BasicLoader):
         batch_size: int,
         mpu,
         sampling_method: Literal["Uniform", "Weighted", "Topk"] = "Uniform",
-        patterns: List[glibc.SubscribePattern] = None,
+        patterns: List[glibs.SubscribePattern] = None,
         logger: logging.Logger = None,
     ) -> None:
         super().__init__(batch_size)
@@ -74,12 +75,12 @@ class OfflineLoader(BasicLoader):
         )
         self._patterns = list(
             [
-                glibc.SubscribePattern(
+                glibs.SubscribePattern(
                     p["offset"],
                     p["length"],
-                    glibc.SubscribePattern.PadOption.tail
+                    glibs.SubscribePattern.PadOption.tail
                     if p["pad"] == "tail"
-                    else glibc.SubscribePattern.PadOption.head,
+                    else glibs.SubscribePattern.PadOption.head,
                 )
                 for p in patterns
             ]
@@ -114,7 +115,7 @@ class OfflineLoader(BasicLoader):
         )
 
     @property
-    def table_spec(self) -> Union[glibc.TableSpec, None]:
+    def table_spec(self) -> Union[glibs.TableSpec, None]:
         if self._table:
             return self._table.get_table_spec()
         else:
@@ -176,7 +177,7 @@ class OfflineLoader(BasicLoader):
             ]
             idx_prev += idx_curr
         for i, col_id in enumerate(self._sub_cols):
-            cspec: glibc.ColumnSpec = self._table.get_column_spec(col_id)
+            cspec: glibs.ColumnSpec = self._table.get_column_spec(col_id)
             # pytorch allocator
             data_batch[i] = torch.zeros(
                 size=(
@@ -237,7 +238,7 @@ class OfflineLoader(BasicLoader):
             idx_prev += idx_curr
 
         for i, col_id in enumerate(self._sub_cols):
-            cspec: glibc.ColumnSpec = self._table.get_column_spec(col_id)
+            cspec: glibs.ColumnSpec = self._table.get_column_spec(col_id)
             # pytorch allocator
             data_batch[i] = torch.zeros(
                 size=(
@@ -258,15 +259,15 @@ class OfflineLoader(BasicLoader):
             tss = self._iset.timesteps[parts[self._dp_rank] % self._dp_capacity]
 
             max_len = self._handler.sub(
-                glibc.Int64Span.from_tensor(parts[self._dp_rank]),  # indices
-                glibc.Int64Span.from_tensor(tss),  # timesteps
-                glibc.Int64Span.from_tensor(tss),  # length(offline case == timesteps)
+                glib.Int64Span.from_tensor(parts[self._dp_rank]),  # indices
+                glib.Int64Span.from_tensor(tss),  # timesteps
+                glib.Int64Span.from_tensor(tss),  # length(offline case == timesteps)
                 col_id,  # column id
-                glibc.Int64Span.from_tensor(src_offsets),
-                glibc.Int64Span.from_tensor(dst_offsets),
-                glibc.Int64Span.from_tensor(copied_lens),
+                glib.Int64Span.from_tensor(src_offsets),
+                glib.Int64Span.from_tensor(dst_offsets),
+                glib.Int64Span.from_tensor(copied_lens),
             )
-            glibc.vcopy(
+            glib.cuda.vcopy(
                 self._table.get_address(),
                 data_batch[i],
                 src_offsets.cuda(),
@@ -285,7 +286,7 @@ class OfflineLoader(BasicLoader):
         data_batch = [None] * len(self._sub_cols)
 
         for i, col_id in enumerate(self._sub_cols):
-            cspec: glibc.ColumnSpec = self._table.get_column_spec(col_id)
+            cspec: glibs.ColumnSpec = self._table.get_column_spec(col_id)
             # pytorch allocator
             data_batch[i] = torch.zeros(
                 size=(
@@ -317,7 +318,7 @@ class OfflineLoader(BasicLoader):
         )
 
         for i, col_id in enumerate(self._sub_cols):
-            cspec: glibc.ColumnSpec = self._table.get_column_spec(col_id)
+            cspec: glibs.ColumnSpec = self._table.get_column_spec(col_id)
             # pytorch allocator
             data_batch[i] = torch.zeros(
                 size=(
@@ -336,16 +337,16 @@ class OfflineLoader(BasicLoader):
             tss = self._iset.timesteps[indices % self._dp_capacity]
 
             max_len = self._handler.sub(
-                glibc.Int64Span.from_tensor(indices),  # indices
-                glibc.Int64Span.from_tensor(tss),  # timesteps
-                glibc.Int64Span.from_tensor(tss),  # length(offline case == timesteps)
+                glib.Int64Span.from_tensor(indices),  # indices
+                glib.Int64Span.from_tensor(tss),  # timesteps
+                glib.Int64Span.from_tensor(tss),  # length(offline case == timesteps)
                 col_id,  # column id
-                glibc.Int64Span.from_tensor(src_offsets),
-                glibc.Int64Span.from_tensor(dst_offsets),
-                glibc.Int64Span.from_tensor(copied_lens),
+                glib.Int64Span.from_tensor(src_offsets),
+                glib.Int64Span.from_tensor(dst_offsets),
+                glib.Int64Span.from_tensor(copied_lens),
             )
             torch.cuda.synchronize()
-            glibc.vcopy(
+            glib.cuda.vcopy(
                 self._table.get_address(),
                 data_batch[i],
                 src_offsets.cuda(),

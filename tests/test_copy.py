@@ -1,4 +1,4 @@
-import libgear.core as glibc
+import libgear as glib
 import torch
 
 
@@ -24,5 +24,5 @@ def test_copy():
         * torch.ones(1, dtype=torch.long, device=device)
     )
     print(stride)
-    glibc.copy_debug(data, copied, src_offset, dst_offset, stride, stride[0])
+    glib.cuda.copy_debug(data, copied, src_offset, dst_offset, stride, stride[0])
     assert torch.all(copied)

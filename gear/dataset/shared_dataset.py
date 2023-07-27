@@ -5,8 +5,11 @@ import random
 from collections import namedtuple
 from typing import Sequence, Union
 
-import libgear.core as glibc
+
 import torch
+import libgear as glib
+import libgear.storage as glibs
+import libgear.index as glibi
 from gear.config import KEY_T_RANGE
 from gear.dtypes import DataType
 from gear.specs import ColumnSpec, TableSpec
@@ -42,8 +45,8 @@ class SharedDataset(Dataset):
                     "SharedDataset creator process should provide storage specs!"
                 )
             # assert max_shared_procs >= 1, "'max_shared_procs' should be larger than 1."
-            table = glibc.TrajectoryTable(spec, table_key, True)
-            iset = glibc.Indexset(
+            table = glibs.TrajectoryTable(spec, table_key, True)
+            iset = glibi.Indexset(
                 int(spec.capacity * spec.worldsize),
                 int(spec.capacity / shard_world),
                 int(
@@ -57,8 +60,8 @@ class SharedDataset(Dataset):
             # assert (
             #     0 < proc_rank < max_shared_procs
             # ), "'proc_rank' should be in the range [1, max_shard_procs) for pure clients, proc_rank 0 is reserved for shard server."
-            table = glibc.TrajectoryTable(spec, table_key, False)
-            iset = glibc.Indexset(
+            table = glibs.TrajectoryTable(spec, table_key, False)
+            iset = glibi.Indexset(
                 spec.capacity * spec.worldsize,
                 spec.capacity / shard_world,
                 index_offset=(
@@ -79,8 +82,8 @@ class SharedDataset(Dataset):
 
     def __init__(
         self,
-        table: Union[glibc.TrajectoryTable, None] = None,
-        index_set: Union[glibc.Indexset, None] = None,
+        table: Union[glibs.TrajectoryTable, None] = None,
+        index_set: Union[glibi.Indexset, None] = None,
     ) -> None:
         super().__init__()
 
@@ -94,11 +97,11 @@ class SharedDataset(Dataset):
                     [f"column{i}" for i in range(table.get_table_spec().num_columns)]
                 ),
             )
-            self._handler = glibc.get_cpu_handler(
+            self._handler = glibs.get_cpu_handler(
                 table,
                 index_set.global_capacity,
-                glibc.Range(0, 0),
-                glibc.Range(
+                glib.Range(0, 0),
+                glib.Range(
                     index_set.index_offset,
                     index_set.index_offset + index_set.local_capacity,
                 ),
@@ -155,7 +158,7 @@ class SharedDataset(Dataset):
 
     def get_raw_view(
         self, index: int, cids: Sequence[int] = None
-    ) -> Union[glibc.Uint8Span, Sequence[glibc.Uint8Span]]:
+    ) -> Union[glib.Uint8Span, Sequence[glib.Uint8Span]]:
         if cids is None:
             cids = range(self.num_col)
 
@@ -221,12 +224,12 @@ class SharedDataset(Dataset):
             meta: SharedDatasetMeta = unpickler.load()
             if create:
                 self._table = unpickler.load()
-                self._iset = glibc.Indexset.load_state(
+                self._iset = glibi.Indexset.load_state(
                     unpickler.load(), meta.index.shared, iset_key, True
                 )
             else:
-                self._table = glibc.TrajectoryTable(meta.storage, table_key, False)
-                self._iset = glibc.Indexset(
+                self._table = glibs.TrajectoryTable(meta.storage, table_key, False)
+                self._iset = glibi.Indexset(
                     meta.index.global_capacity,
                     meta.index.local_capacity,
                     meta.index.index_offset,
@@ -246,11 +249,11 @@ class SharedDataset(Dataset):
             )
 
         self._ensure_attached()
-        self._handler = glibc.get_cpu_handler(
+        self._handler = glibs.get_cpu_handler(
             self._table,
             self._iset.global_capacity,
-            glibc.Range(0, 0),
-            glibc.Range(
+            glib.Range(0, 0),
+            glib.Range(
                 self._iset.index_offset,
                 self._iset.index_offset + self._iset.local_capacity,
             ),

@@ -1,0 +1,16 @@
+sphinx 
+sphinx-autobuild
+sphinx-copybutton
+recommonmark
+sphinx_markdown_tables
+furo
+
+
+
+
+
+
+
+
+
+

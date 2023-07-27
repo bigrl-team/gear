@@ -14,96 +14,43 @@
 
 namespace py = pybind11;
 
-// binding tools
-template <typename Type>
-std::vector<Type> PylistToCppVecConverter(const py::list &l) {
-  std::vector<Type> vec;
-  for (auto v : l) {
-    vec.push_back(v.cast<Type>());
-  }
-  for (auto v : vec) {
-    std::cout << v.to_string() << "\n";
-  }
-  return vec;
-};
-
-void register_pylist_converter(py::module &m) {
-  m.def("node_list_convert", &PylistToCppVecConverter<gear::rdma::NodeBrief>);
-}
-
-struct NArray {
-  int values[100];
-
-  NArray() {
-    for (size_t i = 0; i < 100; ++i) {
-      this->values[i] = (int)i;
-    }
-  }
-
-  NArray(bool init) {
-    if (init) {
-      for (size_t i = 0; i < 100; ++i) {
-        this->values[i] = (int)i;
-      }
-    }
-  }
-};
-
-void register_NArray(py::module &m) {
-  py::class_<NArray, std::shared_ptr<NArray>>(m, "NArray")
-      .def(py::init<>())
-      .def("ivalue", [](NArray &a, size_t idx) { return a.values[idx]; })
-      .def(py::pickle(
-          [](const NArray &a) {
-            return py::make_tuple(py::array_t<uint8_t>({sizeof(int) * 100}, {
-              1
-            }, reinterpret_cast<const uint8_t *>(a.values)));
-          },
-          [](py::tuple t) {
-            if (t.size() != 1) {
-              throw std::runtime_error("tuple size mismatch");
-            }
-            py::array_t<uint8_t> base = t[0].cast<py::array_t<uint8_t>>();
-            auto a = std::make_shared<NArray>(false);
-            memcpy(a->values,
-                   reinterpret_cast<const void *>(base.request().ptr),
-                   sizeof(int) * 100);
-            return a;
-          }));
-}
-
 PYBIND11_MODULE(libgear, libgear) {
 
   libgear.doc() = "GEAR's internal C++ library";
 
-  auto libgear_core = libgear.def_submodule(
-      "core", "Core functional components provided here.");
+  auto libgear_cuda = libgear.def_submodule(
+      "cuda", "Cuda kernel launchers");
 
   // kernel_launchers.h
-  register_cuda_init(libgear_core);
-  register_sum_kernel_launcher(libgear_core);
-  register_prefix_sum_kernel_launcher(libgear_core);
-  register_copy_kernerl_launcher(libgear_core);
+  register_cuda_init(libgear_cuda);
+  register_sum_kernel_launcher(libgear_cuda);
+  register_prefix_sum_kernel_launcher(libgear_cuda);
+  register_copy_kernerl_launcher(libgear_cuda);
 
-  register_context(libgear_core); // context.h
+  // register_context(libgear_core); // context.h
 
-  gear::common::register_common_module(libgear_core);
+  gear::common::register_common_module(libgear);
 
-  gear::rdma::register_module(libgear_core);
+  auto libgear_rdma = libgear.def_submodule(
+      "rdma", "RDMA related classes & methods implementations");
+  gear::rdma::register_module(libgear_rdma);
 
-  gear::index::register_module(libgear_core);
+  auto libgear_index = libgear.def_submodule(
+      "index", "Data structures and methods for trajectory index management");
+  gear::index::register_module(libgear_index);
 
-  // register_pylist_converter(m);
+  gear::env::register_env_detect_functions(libgear);
 
-  gear::env::register_env_detect_functions(libgear_core);
+  auto libgear_storage = libgear.def_submodule(
+      "storage", "Storage organizing and methods operated on memory with storage sematics");
+  gear::storage::register_module(libgear_storage);
 
-  gear::storage::register_module(libgear_core);
-
-  gear::memory::register_module(libgear_core);
+  auto libgear_memory = libgear.def_submodule(
+      "memory", "Low level memory abstractions used in gear project");
+  gear::memory::register_module(libgear_memory);
 
   auto libgear_comm = libgear.def_submodule("comm", "Communicator submodule");
 
   gear::comm::register_nccl_comm(libgear_comm);
 
-  register_NArray(libgear_core);
 }

@@ -1,7 +1,7 @@
 import pickle as pkl
 
 import gear
-import libgear.core as glibc
+import libgear as glib
 from gear.dtypes import DataType
 from gear.specs import TableSpec
 
@@ -24,8 +24,8 @@ if __name__ == "__main__":
     }
 
     tspec = TableSpec.create(**table_spec_params)
-    table = glibc.TrajectoryTable(tspec, 7, True)
+    table = glib.storage.TrajectoryTable(tspec, 7, True)
     table.connect()
-    handler = glibc.get_cpu_handler(table)
-    glibc.Uint8Span.to_tensor(handler.view(0, 0)).fill_(16)
+    handler = glib.storage.get_cpu_handler(table)
+    glib.Uint8Span.to_tensor(handler.view(0, 0)).fill_(16)
     test_table_pickling(table)

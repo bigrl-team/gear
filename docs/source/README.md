@@ -1,7 +1,7 @@
 # GEAR Project
 
 <p align="center">
-<img src=figs/icon.jpg width=512/>
+<img src=https://github.com/bigrl-team/gear/blob/main/icon.jpg width=512/>
 </p>
 
 Welcome to the official Github Repository for <font color=rgb(21,110,175)>GEAR</font>, a GPU-centric experience replay system supporting training large RL models. This repository will serve as a collaborative platform for hosting and managing source code and actively accepting community feedback, bringing together our develop team, users and anyone who would like to generously offer their insights and comments for the projects.
@@ -10,18 +10,15 @@ Our vision for GEAR is to create an open-source project that stands out for its 
 
 If you have any questions or suggestions, feel free to reach out to us. Your feedback is invaluable for GEAR. Thank you for your understanding and support!
 
-![GEAR-Overview](figs/gear-overview.jpg "GEAR-Overview")
-<center><b>GEAR-Overview</b></center>
-
-## Installation
+## Getting Started
 GEAR is designed as a framework-independent library and for usability we have implemented an Python interface for its integration with [PyTorch](https://github.com/pytorch/pytorch), the popular open-sourced Tensor library, and [DeepSpeed](https://github.com/microsoft/DeepSpeed), a widely-used distributed deep learning optimization library. Therefore, the following dependencies have to be met before installing GEAR.
 
-```plain
+```text
 torch==1.13.0+cu117
 deepspeed
 ```
 
-In this section, we will show how to make a clean installation for GEAR.
+In this section, we will show prerequisites before installing GEAR.
 
 ### Prerequisite
 
@@ -114,9 +111,9 @@ In the current state, GEAR provide distributed training interface with DeepSpeed
 $ apt install pdsh -y
 ```
 
-### GEAR Installation Guide
+## Installation Guide
 
-#### Step 1: Create Python Environment
+### Step 1: Create Python Environment
 
 We recommand using [*conda*](https://docs.conda.io/en/latest/miniconda.html) to create a clean python environment. The following steps will guide you through the installtion process on an amd64 linux system:
 ```shell
@@ -132,7 +129,7 @@ Solving environment: failed with repodata from current_repodata.json, will retry
 Collecting package metadata (repodata.json): / 
 ...
 ```
-#### Step 2: Install PyTorch with CUDA Support
+### Step 2: Install PyTorch with CUDA Support
 Please note, installing PyTorch directly via pip using the command ``pip install torch`` could result in a PyTorch installation that lacks CUDA support. Therefore, we recommend installing PyTorch using the --index-url option for complete functionality
 
 ```shell
@@ -145,7 +142,7 @@ $ python -c "import torch; print(torch.cuda.is_available())"
 True
 ```
 
-#### Step 3: Clone GEAR's Repo and Install
+### Step 3: Clone GEAR's Repo and Install
 ```shell
 $ git clone https://github.com/bigrl-team/gear.git
 $ cd gear
@@ -174,16 +171,6 @@ Then in the container ``bash`` shell:
 $ cd gear; eval "$(~/miniconda/bin/conda shell.bash hook)"; conda activate gear; pip install -e .; python -c "import gear; gear.check_visible_device()"
 ```
 
-## Evaluation
-
-<center>
-<figure>
-<img src=./figs/e2e.jpg width=256/>
-<img src=./figs/tp.jpg width=256/>
-</figure>
-</center>
-
-
 
 ## Acknowledgement
 
@@ -191,13 +178,3 @@ $ cd gear; eval "$(~/miniconda/bin/conda shell.bash hook)"; conda activate gear;
 * [**Infinity**](https://github.com/claudebarthels/infinity): Infinity is a simple highly-usable yet powerful  library offering abstractions of ibverbs. Certain releases of GEAR are built upon Infinity for RDMA support.
 * [**PyTorch**](https://github.com/pytorch/pytorch): PyTorch is a popular machine learning framework build upon an extensible tensor library. GEAR provide native conversions between its data/memory interface and torch::Tensor to help users integret GEAR with their existing PyTorch models/code.
 * [**DeepSpeed**](https://github.com/microsoft/DeepSpeed): DeepSpeed is a widely-used distribtued deep learning library with extensible components, GEAR provides iterfaces to make it easily integreted with existing DeepSpeed applications.
-
-
-## Cite GEAR
-
-```bibtex
-@article{wang2023gear,
-  title={GEAR: A GPU-Centric Experience Replay System for Large Reinforcement Learning Models},
-  author={Wang, Hanjing and Sit, Man-Kit and He, Congjie and Wen, Ying and Zhang, Weinan and Wang, Jun and Yang, Yaodong and Mai, Luo}
-}
-```

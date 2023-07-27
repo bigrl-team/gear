@@ -1,5 +1,6 @@
-import libgear.core as glibc
 import torch
+import libgear as glib
+import libgear.storage as glibs
 from libgear.core import (ColumnSpec, SubscribePattern, TableSpec,
                           TrajectoryTable)
 
@@ -7,11 +8,11 @@ from libgear.core import (ColumnSpec, SubscribePattern, TableSpec,
 def test_sub():
     assert torch.cuda.is_available()
     device = torch.device("cuda:0")
-    cspecs = [ColumnSpec(glibc.float32, [1, 2, 3, 4])]
+    cspecs = [ColumnSpec(glib.float32, [1, 2, 3, 4])]
     tspec = TableSpec(0, 1, 100, 32, 1, cspecs)
     # table used to subscribe test can be used without allocate
     table = TrajectoryTable(tspec, 7, True)
-    handler = glibc.get_cpu_handler(table)
+    handler = glibs.get_cpu_handler(table)
     patterns = [SubscribePattern(-1, 100, SubscribePattern.PadOption.head)]
     handler.set(patterns)
 
@@ -44,8 +45,8 @@ def test_sub():
         dtype=torch.float32,
         device=device,
     )
-    glibc.vcopy(
-        glibc.MemoryPtr(mock_src.data_ptr()),
+    glib.cuda.vcopy(
+        glib.MemoryPtr(mock_src.data_ptr()),
         dst,
         src_ofsts.to(device),
         dst_ofsts.to(device),
