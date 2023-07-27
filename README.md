@@ -182,13 +182,20 @@ $ cd gear; eval "$(~/miniconda/bin/conda shell.bash hook)"; conda activate gear;
 
 ## Evaluation
 
-<center>
-<figure>
-<img src=./figs/e2e.jpg width=256 />     <img src=./figs/tp.jpg width=256 />
-</figure>
-</center>
-<center><b>(Left)End-to-end throughput comparison with Reverb.(Right)Trajectory collection throughput with varied batch sizes</b></center>
-
+<div id="image-table">
+    <table>
+	    <tr>
+    	    <td style="padding:40px">
+        	    <img src="./figs/e2e.jpg" width="400"/>
+              <center><b>(Left)End-to-end throughput comparison with Reverb.</b></center>
+      	    </td>
+            <td style="padding:40px">
+            	<img src="./figs/tp.jpg" width="400"/>
+              <center><b>(Right)Traj. collection throughput with varied batch sizes</b></center>
+            </td>
+        </tr>
+    </table>
+</div>
 As shown in end-to-end throughput comparison with Reverb, GEAR achieves 3x performance under single-node settings and 6x performance under multi-node settings. And GEAR also show linear scalability w.r.t larger batch sizes, which is pratical in training large RL models at scale.
 
 
