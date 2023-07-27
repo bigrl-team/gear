@@ -7,7 +7,7 @@ To run this example, additional dependencies besides standard installation, whic
 
 ```shell
 $ cd gear/examples/offline/single_node
-$ pip install -r pip install -r single_node_requirements.txt 
+$ pip install -r single_node_requirements.txt 
 ```
 
 

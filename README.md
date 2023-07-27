@@ -4,14 +4,20 @@
 <img src=figs/icon.jpg width=512/>
 </p>
 
-Welcome to the official Github Repository for <font color=rgb(21,110,175)>GEAR</font>, a GPU-centric experience replay system supporting training large RL models. This repository will serve as a collaborative platform for hosting and managing source code and actively accepting community feedback, bringing together our develop team, users and anyone who would like to generously offer their insights and comments for the projects.
+Welcome to the official Github Repository for <font color=rgb(21,110,175)>GEAR</font>, a GPU-centric experience replay system supporting training Reinforcement Learning(RL) models at scale. 
 
-Our vision for GEAR is to create an open-source project that stands out for its innovation, usability and contribution to the RL community. In the current state, however, due to time contraints the released version of GEAR may not include all the features and functionality we have planned for it. We are actively working on code cleaning and development and will be gradually open-sourcing the project.
-
-If you have any questions or suggestions, feel free to reach out to us. Your feedback is invaluable for GEAR. Thank you for your understanding and support!
+Recent works have shown large sequence models's impressive capability in RL challenges, such as multi-agent, multi-model and multi-task senarios. To make the training affordable, RL models are often trained with past experience and parallel framework. Given plenty exploration on the accelerating training with distributed GPU servers and multi-dimensional parallelism, the pivotal challenge that hinders the scaling of these large RL models relies in the experience replay systems. The systems are required to efficiently manage massive volume of experience data(~100TBs), select large trajectory batch(~K trajectories) and distribute data batch to the training servers according to various parallelism schemas. Traditional experience replay systems fail to fulfill the requirements, which inspires the design of GEAR.
 
 ![GEAR-Overview](figs/gear-overview.jpg "GEAR-Overview")
 <center><b>GEAR-Overview</b></center>
+
+GEAR bridges online/offline RL data with parallely trained models. As illustrated in the overview, GEAR serve as a experience replay system enabling distributed trajectory storage and management, GPU accelerated trajectory selection and collection, featuring:
+* Efficient: GEAR proposes comprehensive optimizations towards data accessing & computation patterns of RL training workflows, including data locality in distributed training, CUDA kernels for trajectory selection, zero-copy host memory accessing from GPUs and etc.
+* Scalable: GEAR revisit the hardware capability(RAM, GPU, NICs) of modern GPU-based training servers, which are often underutilized in conventional DL tasks. Combining optimizations in architectural design and utilization of hardware resources, GEAR can achieve better scability in distributed RL training.
+* Usable: GEAR provides clean and highly usable interface for distributed deployment, enabling its seamless intergration with existing distributed DL systems like DeepSpeed.
+
+
+
 
 ## Installation
 GEAR is designed as a framework-independent library and for usability we have implemented an Python interface for its integration with [PyTorch](https://github.com/pytorch/pytorch), the popular open-sourced Tensor library, and [DeepSpeed](https://github.com/microsoft/DeepSpeed), a widely-used distributed deep learning optimization library. Therefore, the following dependencies have to be met before installing GEAR.
