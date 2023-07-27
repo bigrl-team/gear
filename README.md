@@ -6,17 +6,19 @@
 
 Welcome to the official Github Repository for <font color=rgb(21,110,175)>GEAR</font>, a GPU-centric experience replay system supporting training Reinforcement Learning(RL) models at scale. 
 
-Recent works have shown large sequence models's impressive capability in RL challenges, such as multi-agent, multi-model and multi-task senarios. To make the training affordable, RL models are often trained with past experience and parallel framework. Given plenty exploration on the accelerating training with distributed GPU servers and multi-dimensional parallelism, the pivotal challenge that hinders the scaling of these large RL models relies in the experience replay systems. The systems are required to efficiently manage massive volume of experience data(~100TBs), select large trajectory batch(~K trajectories) and distribute data batch to the training servers according to various parallelism schemas. Traditional experience replay systems fail to fulfill the requirements, which inspires the design of GEAR.
+Recent works have demonstrated the impressive capability of large sequence models in tackling RL challenges, especially within multi-agent, multi-model and multi-task senarios. To make the training affordable, RL models are often trained with past experience and parallel frameworks. Despite substantial progress in accelerating training large sequence models through distributed GPU servers and multi-dimensional parallelism, the pivotal challenge that impedes the scalability of these large RL models is the efficiency of experience replay systems. 
+
+The systems are required to efficiently manage massive volume of experience data(up to ~100TBs), select large trajectory batches(~K trajectories) and distribute data batches to the training servers according to varied parallelism schemas. Existing experience replay systems fail to fulfill the requirements, which inspires the design of GEAR.
 
 ![GEAR-Overview](figs/gear-overview.jpg "GEAR-Overview")
 <p align="center"><b>
 Fig. GERA overview
 </b></p>
 
-GEAR bridges online/offline RL data with parallely trained models. As illustrated in the overview, GEAR serve as a experience replay system enabling distributed trajectory storage and management, GPU accelerated trajectory selection and collection, featuring:
-* Efficient: GEAR proposes comprehensive optimizations towards data accessing & computation patterns of RL training workflows, including data locality in distributed training, CUDA kernels for trajectory selection, zero-copy host memory accessing from GPUs and etc.
-* Scalable: GEAR revisit the hardware capability(RAM, GPU, NICs) of modern GPU-based training servers, which are often underutilized in conventional DL tasks. Combining optimizations in architectural design and utilization of hardware resources, GEAR can achieve better scability in distributed RL training.
-* Usable: GEAR provides clean and highly usable interface for distributed deployment, enabling its seamless intergration with existing distributed DL systems like DeepSpeed.
+GEAR provides a powerful bridge between online/offline RL data and parallely trained models. As illustrated in the overview, GEAR serve as a experience replay system facilitating distributed trajectory storage and management, GPU-accelerated trajectory selection and collection. The system offers:
+* **Efficiency**: GEAR introduces comprehensive optimizations targeting the data accessing & selection patterns of RL training workflows. The enhancements include optimizing data locality in distributed training, deploying CUDA kernels for trajectory selection, enabling zero-copy host memory accessing from GPUs and etc.
+* **Scalability**: GEAR revisit the hardware capability(RAM, GPU, NICs) of modern GPU-based training servers, which are often underutilized in practice. Combining optimizations in architectural design and utilization of hardware resources, GEAR can achieve better scability in distributed RL training.
+* **Usability**: GEAR provides clean and highly usable interface for distributed deployment, enabling its seamless intergration with existing distributed DL systems like DeepSpeed.
 
 
 
