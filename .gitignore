@@ -9,7 +9,6 @@ venv
 *.swp
 build/
 data/
-figs/
 .vscode
 cgo_gen/
 *.html

@@ -48,6 +48,6 @@ Iteration: 90 evalution reward 147.95927004941876
 
 An tensorboard log file will be generate under the ``logs`` folder.
 <p align="center">
-<img src=https://github.com/bigrl-team/gear/blob/main/examples/offline/single-node/figs/example_tensorboard_logs.png width=512/>
+<img src=figs/example_tensorboard_logs.png />
 </p>
 
