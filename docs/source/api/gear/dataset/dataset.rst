@@ -3,9 +3,6 @@
 
 
 .. currentmodule:: gear.dataset
+    :members:
+    :undoc-members:
 
-
-.. toctree::
-    :maxdepth: 2
-
-    shared_dataset
