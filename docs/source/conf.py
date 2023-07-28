@@ -18,6 +18,7 @@ extensions = [
     "sphinx.ext.duration",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx.ext.intersphinx",
     "recommonmark",
     "sphinx_markdown_tables",
 ]
@@ -40,11 +41,11 @@ html_theme_options = {
     "source_directory": "docs/",
 }
 
+intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}
 
 # autodoc
 import importlib
+
 importlib.import_module("torch")
 
-autodoc_default_options = {
-    "member-order": "groupwise"
-}
+autodoc_default_options = {"member-order": "groupwise"}

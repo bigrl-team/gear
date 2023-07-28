@@ -1,3 +1,10 @@
+"""
+This file mainly define alias for the DataTypes that will be accepted by GEAR and their forward & backward conversions with PyTorch DataType.
+
+"""
+
+from typing import Dict
+
 import libgear as glib
 import torch
 
@@ -6,7 +13,7 @@ DataType = glib.DataType
 """
     Currently half types: int16 & float16 not supported
 """
-CVT_DTYPES_TORCH_TO_GEAR = {
+CVT_DTYPES_TORCH_TO_GEAR: Dict[torch.dtype, glib.DataType] = {
     torch.bool: glib.bool,
     torch.uint8: glib.uint8,
     torch.int8: glib.int8,
@@ -18,7 +25,7 @@ CVT_DTYPES_TORCH_TO_GEAR = {
     torch.float64: glib.float64,
 }
 
-CVT_DTYPES_GEAR_TO_TORCH = {
+CVT_DTYPES_GEAR_TO_TORCH: Dict[glib.DataType, torch.dtype] = {
     glib.bool: torch.bool,
     glib.uint8: torch.uint8,
     glib.int8: torch.int8,
