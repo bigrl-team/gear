@@ -304,7 +304,10 @@ void register_indexset(py::module &m) {
           [](py::tuple t) {
             return indexset_state_deserialization_helper(t);
           }));
-  py::class_<Indexset, std::shared_ptr<Indexset>>(m, "Indexset")
+  py::class_<Indexset, std::shared_ptr<Indexset>>(
+      m, "Indexset", /*TODO: add docstring*/ R"mydelimiter(
+  /* your docstrings here */ 
+  )mydelimiter")
       .def(py::init<size_t, size_t, size_t, bool, key_t, bool>(),
            py::arg("global_capacity"), py::arg("local_capacity"),
            py::arg("index_offet"), py::arg("shared") = false,
@@ -313,21 +316,28 @@ void register_indexset(py::module &m) {
           "load_state",
           [](IndexsetState &state, bool shared, key_t key, bool create) {
             return std::make_shared<Indexset>(state, shared, key, create);
-          })
+          },
+          /*TODO: add docstring*/ R"mydelimiter(
+          /* your docstrings here */ 
+          )mydelimiter")
       .def_property(
           "timesteps",
           [](Indexset &self) {
             return convert_data_pointer_as_tensor<int64_t>(
                 self.get_timesteps(), self.get_local_capacity());
           },
-          &Indexset::set_timestep)
+          &Indexset::set_timestep, /*TODO: add docstring*/ R"mydelimiter(
+          /* your docstrings here */ 
+          )mydelimiter")
       .def_property(
           "weights",
           [](Indexset &self) {
             return convert_data_pointer_as_tensor<float>(
                 self.get_weights(), self.get_local_capacity());
           },
-          &Indexset::set_weight)
+          &Indexset::set_weight, /*TODO: add docstring*/ R"mydelimiter(
+          /* your docstrings here */ 
+          )mydelimiter")
       .def_property_readonly(
           "global_capacity",
           [](const Indexset &s) { return s.get_global_capacity(); })

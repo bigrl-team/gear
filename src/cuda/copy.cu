@@ -243,8 +243,16 @@ void launch_fused_subcopy_collect(
 } // namespace gear::cuda
 
 void register_copy_kernerl_launcher(py::module &m) {
-  m.def("copy", &gear::cuda::launch_fix_stride_copy_collect);
-  m.def("vcopy", &gear::cuda::launch_vary_stride_copy_collect);
+  m.def("copy", &gear::cuda::launch_fix_stride_copy_collect,
+        /*TODO: add docstring*/ R"mydelimiter(
+          
+          
+          )mydelimiter");
+  m.def("vcopy", &gear::cuda::launch_vary_stride_copy_collect,
+        /*TODO: add docstring*/ R"mydelimiter(
+          
+          
+          )mydelimiter");
 
   m.def("copy_debug", [](torch::Tensor &src, torch::Tensor &dst,
                          torch::Tensor &src_offsets, torch::Tensor &dst_offsets,

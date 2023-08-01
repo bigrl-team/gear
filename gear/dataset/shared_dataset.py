@@ -23,16 +23,33 @@ IndexMeta = namedtuple(
 
 
 class SharedDataset(Dataset):
+    """
+    SharedDataset consists a set of trajectories and their statuses, and provides straightforward API interfaces for storing, fetching and updating trajectory data. Its storage space  is allocated on the host's shared-memory, facilitating fast Inter-Process-Communication(IPC) data sharing without the need of memory serialization/deserialization. Furthermore, PyTorch dataloaders inherently assume a global view of underlying datasets, which means all data have to been visible to the dataloader. ``SharedDataset`` fulfill the requirement of the global accessibility within a single node, thereby eliminating the memory redundancy that arised by loading the entire copy of datasets in each process.
+    """
+
     @staticmethod
     def create(
         spec: TableSpec = Union[TableSpec, None],
         create: bool = True,
         shard_rank: int = 0,
         shard_world: int = 1,
-        proc_rank: int = 0,
-        # max_shared_procs: int = 1,
         key: Union[int, None] = None,
     ):
+        """
+        TODO
+
+        :type spec: Union[TableSpec, None]
+        :param spec:
+            TableSpec
+
+        :type create: bool
+        :param create:
+
+
+        :type shard_rank: int
+        :param shard_rank:
+
+        """
         if key is None:
             key = get_local_node_hashed_int32()
         rng = random.Random(key)
@@ -44,7 +61,6 @@ class SharedDataset(Dataset):
                 raise RuntimeError(
                     "SharedDataset creator process should provide storage specs!"
                 )
-            # assert max_shared_procs >= 1, "'max_shared_procs' should be larger than 1."
             table = glibs.TrajectoryTable(spec, table_key, True)
             iset = glibi.Indexset(
                 int(spec.capacity * spec.worldsize),
@@ -57,9 +73,6 @@ class SharedDataset(Dataset):
                 create=True,
             )
         else:
-            # assert (
-            #     0 < proc_rank < max_shared_procs
-            # ), "'proc_rank' should be in the range [1, max_shard_procs) for pure clients, proc_rank 0 is reserved for shard server."
             table = glibs.TrajectoryTable(spec, table_key, False)
             iset = glibi.Indexset(
                 spec.capacity * spec.worldsize,
@@ -110,15 +123,18 @@ class SharedDataset(Dataset):
             self._handler = None
 
     @property
-    def weights(self):
+    def weights(self) -> torch.FloatTensor:
+        """Return the weights of the underlying indices in a tensor view(in host memory)"""
         return self._iset.weights
 
     @property
-    def timesteps(self):
+    def timesteps(self) -> torch.LongTensor:
+        """Return the timesteps of the underlying indics in a tensor view(in host memory)"""
         return self._iset.timesteps
 
     @property
-    def num_col(self):
+    def num_col(self) -> int:
+        """Return number of columns in the table."""
         return self._table.ncolumns
 
     def __getitem__(self, index):
@@ -139,26 +155,74 @@ class SharedDataset(Dataset):
         for cid in range(self.num_col):
             self._handler.view(index, cid).copy(columns[cid].view(-1))
 
+    def set_trajectory(
+        self, index: int, weight: float, timestep: int, *columns: Sequence[torch.Tensor]
+    ):
+        """
+        Set the values/attributes that represent the trajectory.
+
+        GEAR provides two apis to set the trajectory entry with equal functionality:
+        
+        .. code-block:: python
+
+            dataset[trajectory_index] = weight, timestep, columns
+            dataset.set_trajectory(index, weight, timestep, columns)
+
+
+        :type index: int
+        :param index:
+            The trajectory index.
+
+        :type weight: float
+        :param weight:
+            Priority/weight of the trajectory.
+
+        :type timestep: int
+        :param timestep:
+            The length of the trajectory.
+
+        :type columns: Sequence[torch.tensor]
+        :param columns:
+            Column value tensors
+        """
+        self._iset.weights[index] = weight
+        self._iset.timesteps[index] = timestep
+        for cid in range(self.num_col):
+            self._handler.view(index, cid).copy(columns[cid].view(-1))
+
     def get_column_spec(self, cid: int) -> ColumnSpec:
+        """Return the corresponding ColumnSpec of the given column id"""
         return self._table.get_column_spec(cid)
 
     def get_column_dtype(self, cid: int) -> DataType:
-        """
-        Get column id specified datatype from the TableSpec
-        """
+        """Get the datatype of the column id specified"""
         return self._table.get_column_spec(cid).dtype
 
     def get_column_shape(self, cid: int) -> DataType:
-        """
-        Get column id specified datatype from the TableSpec
-        """
+        """Get column data shape of the given column id"""
         return (self._table.get_table_spec().trajectory_length,) + tuple(
             self._table.get_column_spec(cid).shape
         )
 
     def get_raw_view(
         self, index: int, cids: Sequence[int] = None
-    ) -> Union[glib.Uint8Span, Sequence[glib.Uint8Span]]:
+    ) -> tuple[glib.Uint8Span]:
+        """
+        Get raw memory subscription of the underlying columns of a trajectory.
+
+        :type index: int
+        :param index:
+            The index of the corresponding trajectory id and the trajectory id should be on the local node.
+
+        :type cids: Sequence[int]
+        :param cids:
+            The ids of the columns to be subscribed.
+        
+        .. seealso::
+
+            :py:meth:`libgear.storage.CpuTrajectoryStorageHandler.raw`.
+        """
+
         if cids is None:
             cids = range(self.num_col)
 
@@ -167,6 +231,21 @@ class SharedDataset(Dataset):
     def get_tensor_view(
         self, index: int, cids: Sequence[int] = None
     ) -> Union[torch.Tensor, Sequence[torch.Tensor]]:
+        """
+        Get  memory subscriptions in tensor view of the underlying columns of a trajectory.
+
+        :type index: int
+        :param index:
+            The index of the corresponding trajectory id and the trajectory id should be on the local node.
+
+        :type cids: Sequence[int]
+        :param cids:
+            The ids of the columns to be subscribed. All columns will be returned if no column specified.
+        
+        .. seealso::
+
+            :py:meth:`libgear.storage.CpuTrajectoryStorageHandler.view`.
+        """
         if cids is None:
             cids = range(self.num_col)
         raw_views = self.get_raw_view(index, cids)
@@ -180,6 +259,12 @@ class SharedDataset(Dataset):
         )
 
     def checkpoint(self, path: Union[pathlib.Path, str]):
+        """
+        Dump the checkpointed state to the disk.
+
+        :type path: Union[pathlib.Path, str]
+        :param path: Dump path.
+        """
         ensure_path(path)
 
         with open(path, "wb") as of:
@@ -208,6 +293,22 @@ class SharedDataset(Dataset):
         create: bool = True,
         proc_rank: int = 0,
     ):
+        """
+        Invoked by an empty SharedDataset to load the dumped state.
+
+        :type path:  Union[pathlib.Path, str]
+        :param path:
+            Path pointing to the state to load.
+
+        :type key: Union[int, None]
+        :param key:
+            Set the shared key, which should be shared among the processes which attaching to the same trajectory table.
+
+        :type create: bool
+        :param create:
+            Whether create or attach to the trajectory table. Practically only the first process within a data-sharing group/node create the table, with other processes attaching to the table with ``create=False``
+
+        """
         self._release_resources()
 
         if key is None:

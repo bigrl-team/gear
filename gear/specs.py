@@ -33,7 +33,10 @@ class ColumnSpec:
 
         :type name: str
         :param name:
-            Column name in string format. See also :py:func:`libgear.storage.TableSpec.index`.
+            Column name in string format.
+
+            .. seealso::
+              :py:func:`libgear.storage.TableSpec.index`.
 
         :return:
             Constructed ColumnSpec instance.

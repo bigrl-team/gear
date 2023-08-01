@@ -40,11 +40,11 @@ std::string SubscribePattern::to_string() {
 }
 
 CpuTrajectoryStorageHandler::CpuTrajectoryStorageHandler(
-    const TrajectoryTable *table, size_t global_capacity, Range wregion,
-    Range rregion)
-    : global_capacity(global_capacity), writable_region(wregion),
-      readable_region(rregion) {
+    const TrajectoryTable *table, Range wregion, Range rregion)
+    : writable_region(wregion), readable_region(rregion) {
   this->table_inst = table;
+  this->global_capacity = this->table_inst->get_table_spec().capacity *
+                          this->table_inst->get_table_spec().worldsize;
   this->patterns.resize(table->ncolumns());
 }
 
@@ -153,7 +153,8 @@ void CpuTrajectoryStorageHandler::fused_subcopy(Int64Span indices,
       this->table_inst->column_strides[column], column_ofst, expected_length);
 }
 
-void CpuTrajectoryStorageHandler::connect(int rank, int worldsize, py::bytes id) {
+void CpuTrajectoryStorageHandler::connect(int rank, int worldsize,
+                                          py::bytes id) {
   this->ncomm = NcclCommunicator(rank, worldsize, std::string(id));
 }
 
@@ -184,12 +185,12 @@ void CpuTrajectoryStorageHandler::subsend(int peer, Int64Span indices,
     int64_t end = MIN(lengths[i], static_cast<int64_t>(start + pat.length));
     int64_t count =
         MAX(end - start, 0) * this->table_inst->column_strides[column];
-    printf("timestep %ld length %ld start %ld, end %ld, count %ld.\n",timesteps[i], lengths[i], start, end, count);
+    printf("timestep %ld length %ld start %ld, end %ld, count %ld.\n",
+           timesteps[i], lengths[i], start, end, count);
     ncclSend(src, count, nccl_dtype, peer, this->ncomm->nccl_comm,
              c10::cuda::getCurrentCUDAStream());
   }
   ncclGroupEnd();
-
 }
 
 void CpuTrajectoryStorageHandler::subrecv(int peer, void *dst,
@@ -208,8 +209,8 @@ void CpuTrajectoryStorageHandler::subrecv(int peer, void *dst,
   ncclGroupStart();
   for (size_t i = 0; i < static_cast<size_t>(indices.size); ++i) {
     void *wptr = reinterpret_cast<void *>(
-        reinterpret_cast<char *>(dst) + i*
-        pat.length * this->table_inst->column_strides[column]);
+        reinterpret_cast<char *>(dst) +
+        i * pat.length * this->table_inst->column_strides[column]);
     int64_t start = MAX(0, timesteps[i] + pat.offset);
     int64_t end = MIN(lengths[i], static_cast<int64_t>(start + pat.length));
     int64_t count =

@@ -54,7 +54,9 @@ void print_environ() {
 
 void register_env_detect_functions(py::module &m) {
   m.def("print_compile_options", &print_compile_options);
-  m.def("print_environ", &print_environ);
+  m.def("print_environ", &print_environ, /*TODO: add docstring*/ R"mydelimiter(
+  /* your docstrings here */ 
+  )mydelimiter");
 }
 
 } // namespace gear::env

@@ -36,7 +36,6 @@ struct TableSpec {
 
   ssize_t index(const std::string &name);
 
-
   size_t size();
 };
 

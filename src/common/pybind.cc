@@ -84,7 +84,9 @@ void register_dtypes(py::module &m) {
 }
 
 void register_range(py::module &m) {
-  py::class_<Range>(m, "Range")
+  py::class_<Range>(m, "Range", /*TODO: add docstring*/ R"mydelimiter(
+  /* your docstrings here */ 
+  )mydelimiter")
       .def(py::init<size_t, size_t>())
       .def_readwrite("lb", &Range::lb)
       .def_readwrite("hb", &Range::hb);

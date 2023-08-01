@@ -5,9 +5,11 @@ import pickle as pkl
 import random
 from typing import Any, Dict, List, Literal, Sequence, Union
 
+import torch
 import libgear as glib
 import libgear.storage as glibs
-import torch
+
+import gear
 from gear.dataset import SharedDataset
 from gear.dtypes import CVT_DTYPES_GEAR_TO_TORCH, CVT_DTYPES_TORCH_TO_GEAR
 from gear.mpu import ModelParallelismUnit as Mpu
@@ -17,15 +19,17 @@ from gear.utils import get_local_node_hashed_int32
 from .basic_loader import BasicLoader
 
 
-def ensure_dataset(dataset: Union[SharedDataset, str, pathlib.Path]):
+def ensure_dataset(dataset: Union[SharedDataset, str, pathlib.Path]) -> SharedDataset:
     """
     Helper function for dataset preparation.
 
-    params:
-        dataset: Union[SharedDataset, str, pathlib.Path], either string-like path and pathlib.Path that points the serialized state file or a built SharedDataset.
+    :type dataset: dataset: Union[SharedDataset, str, pathlib.Path]
+    :param dataset:
+        Either string-like path and pathlib.Path that points the serialized state file or a built SharedDataset.
 
-    return:
-        built SharedDataset
+    :rtype gear.dataset.SharedDataset
+    :return:
+        build SharedDataset
     """
     if isinstance(dataset, SharedDataset):
         return dataset
@@ -38,6 +42,17 @@ def ensure_dataset(dataset: Union[SharedDataset, str, pathlib.Path]):
 
 
 class OfflineLoader(BasicLoader):
+    """
+    Loading data from a temporal built or serialized SharedDataset
+
+
+    Usage:
+
+    .. code-block:: python
+
+        timestep, data_batch = next(loader)
+    """
+
     @staticmethod
     def create(
         data_path: pathlib.Path,
@@ -50,6 +65,10 @@ class OfflineLoader(BasicLoader):
         key: Union[int, None] = None,
         attach: bool = True,
     ):
+        """
+        OfflineLoader factory function
+
+        """
         if key is None:
             key = get_local_node_hashed_int32()
         dataset = SharedDataset().load(data_path, key)
@@ -116,12 +135,40 @@ class OfflineLoader(BasicLoader):
 
     @property
     def table_spec(self) -> Union[glibs.TableSpec, None]:
+        """Get the table spec from the subscribed table.
+
+        .. seealso::
+
+            :py:class:`libgear.storage.TableSpec`."""
         if self._table:
             return self._table.get_table_spec()
         else:
             return None
 
-    def partition_indices(self, global_indices):
+    def get_tensor_view(
+        self, index: int, cids: Union[Sequence[int], None] = None
+    ) -> tuple[torch.Tensor]:
+        """
+        .. seealso::
+
+            :py:func:`gear.dataset.SharedDataset.get_tensor_view`.
+
+
+        :type index: int
+        :param index:
+            The index of the corresponding trajectory id and the trajectory id should be on the local node.
+
+        :type cids: Sequence[int]
+        :param cids:
+            The ids of the columns to be subscribed. All columns will be returned if no column specified.
+
+        :rtype: tuple[torch.Tensor]
+        """
+        if self._handler is None:
+            raise gear.errors.HandlerMissing()
+        return self._dataset.get_tensor_view(index, cids)
+
+    def _partition_indices(self, global_indices):
         batch_size = global_indices.size(0)
         slice_size = max(int(batch_size / self._dp_world), 1)
 
@@ -140,7 +187,7 @@ class OfflineLoader(BasicLoader):
 
         return indices_partitions
 
-    def generate_rank_comm_order(self):
+    def _generate_rank_comm_order(self):
         """
         Any matrix with properties:
             (i, k) = j => (j, k) = i,
@@ -153,18 +200,18 @@ class OfflineLoader(BasicLoader):
             ranks[i] = (ranks[i - 1] + 1) % self._dp_world
         return ranks
 
-    def fused_iterate(self):
+    def _fused_iterate(self):
         sampled_indices = self._sampler.sync_sample(
             self._indices,
             self._iset.weights,
             self._batch_size * self._dp_world,
         )
         # print("============>>>>>>", sampled_indices)
-        parts = self.partition_indices(sampled_indices)
+        parts = self._partition_indices(sampled_indices)
 
         data_batch = [None] * len(self._sub_cols)
 
-        orders = self.generate_rank_comm_order()
+        orders = self._generate_rank_comm_order()
 
         timesteps = torch.zeros(self._batch_size, dtype=torch.long)
         idx_prev = 0
@@ -204,14 +251,14 @@ class OfflineLoader(BasicLoader):
             # torch.cuda.synchronize()
         return timesteps, data_batch
 
-    def low_level_controlled_iterate(self):
+    def _low_level_controlled_iterate(self):
         sampled_indices = self._sampler.sync_sample(
             self._indices,
             self._iset.weights,
             self._batch_size * self._dp_world,
         ).cpu()
         # print("============>>>>>>", sampled_indices)
-        parts = self.partition_indices(sampled_indices)
+        parts = self._partition_indices(sampled_indices)
 
         ncol = len(self._sub_cols)
         data_batch = [None] * ncol
@@ -225,7 +272,7 @@ class OfflineLoader(BasicLoader):
             int(sampled_indices.numel() / self._dp_world), dtype=torch.long
         )
 
-        orders = self.generate_rank_comm_order()
+        orders = self._generate_rank_comm_order()
         timesteps = torch.zeros(self._batch_size, dtype=torch.long)
         idx_prev = 0
         for rank in orders:
@@ -279,80 +326,5 @@ class OfflineLoader(BasicLoader):
         return tss, data_batch
 
     def __next__(self):
-        return self.fused_iterate()
-        # return self.low_level_controlled_iterate()
-
-    def exposed_fused_iterate(self, indices):
-        data_batch = [None] * len(self._sub_cols)
-
-        for i, col_id in enumerate(self._sub_cols):
-            cspec: glibs.ColumnSpec = self._table.get_column_spec(col_id)
-            # pytorch allocator
-            data_batch[i] = torch.zeros(
-                size=(
-                    len(indices),
-                    self._patterns[i].length,
-                )
-                + tuple(cspec.shape),
-                dtype=CVT_DTYPES_GEAR_TO_TORCH[cspec.dtype],
-                device=self._mpu.device,
-            )
-            local_indices = indices % self._dp_capacity
-            tss = self._iset.timesteps[local_indices].to(self._mpu.device)
-
-            self._handler.subcopy(indices.cuda(), tss, tss, col_id, data_batch[i])
-            # torch.cuda.synchronize()
-        return data_batch
-
-    def exposed_low_level_controlled_iterate(self, indices):
-        ncol = len(self._sub_cols)
-        data_batch = [None] * ncol
-        src_offsets = torch.zeros(
-            int(indices.numel() / self._dp_world), dtype=torch.long
-        )
-        dst_offsets = torch.zeros(
-            int(indices.numel() / self._dp_world), dtype=torch.long
-        )
-        copied_lens = torch.zeros(
-            int(indices.numel() / self._dp_world), dtype=torch.long
-        )
-
-        for i, col_id in enumerate(self._sub_cols):
-            cspec: glibs.ColumnSpec = self._table.get_column_spec(col_id)
-            # pytorch allocator
-            data_batch[i] = torch.zeros(
-                size=(
-                    len(indices),
-                    self._patterns[i].length,
-                )
-                + tuple(cspec.shape),
-                dtype=CVT_DTYPES_GEAR_TO_TORCH[cspec.dtype],
-                device=self._mpu.device,
-            )
-
-            src_offsets.fill_(0)
-            dst_offsets.fill_(0)
-            copied_lens.fill_(0)
-
-            tss = self._iset.timesteps[indices % self._dp_capacity]
-
-            max_len = self._handler.sub(
-                glib.Int64Span.from_tensor(indices),  # indices
-                glib.Int64Span.from_tensor(tss),  # timesteps
-                glib.Int64Span.from_tensor(tss),  # length(offline case == timesteps)
-                col_id,  # column id
-                glib.Int64Span.from_tensor(src_offsets),
-                glib.Int64Span.from_tensor(dst_offsets),
-                glib.Int64Span.from_tensor(copied_lens),
-            )
-            torch.cuda.synchronize()
-            glib.cuda.vcopy(
-                self._table.get_address(),
-                data_batch[i],
-                src_offsets.cuda(),
-                dst_offsets.cuda(),
-                copied_lens.cuda(),
-                max_len,
-            )
-            torch.cuda.synchronize()
-        return tss, data_batch
+        return self._fused_iterate()
+        # return self._low_level_controlled_iterate()

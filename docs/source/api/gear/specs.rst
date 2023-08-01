@@ -10,7 +10,6 @@
 
 
 
-
 .. autoclass:: gear.specs.TableSpec
     :members:
 

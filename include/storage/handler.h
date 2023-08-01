@@ -50,8 +50,7 @@ protected:
 class CpuTrajectoryStorageHandler : public virtual TrajectoryStorageHandler {
 
 public:
-  CpuTrajectoryStorageHandler(const TrajectoryTable *table,
-                              size_t global_capacity, Range wregion,
+  CpuTrajectoryStorageHandler(const TrajectoryTable *table, Range wregion,
                               Range rregion);
 
   void set(std::vector<size_t> cids,
